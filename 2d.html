@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>杨总的生日寻宝</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #fdf5f7; font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; overflow-x: hidden; }
+  .header { text-align: center; margin-top: 20px; margin-bottom: 15px; color: #c04a6b; }
+  .header h1 { font-size: 22px; }
+  .header p { font-size: 14px; margin-top: 5px; color: #6a4a5a; }
+  .room { width: 92vw; max-width: 400px; background: #fff; border-radius: 20px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 15px; position: relative; }
+  .item { background: #f9f9f9; border: 2px dashed #e0e0e0; border-radius: 15px; padding: 15px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden; }
+  .item:active { transform: scale(0.98); }
+  .item.found { border-color: #ffd700; background: #fffdf0; }
+  .item .icon { font-size: 30px; margin-right: 15px; }
+  .item .text { flex: 1; }
+  .item .title { font-size: 16px; font-weight: bold; color: #333; }
+  .item .subtitle { font-size: 13px; color: #999; margin-top: 4px; }
+  .item .badge { background: #ff5c8a; color: white; font-size: 12px; padding: 4px 8px; border-radius: 10px; display: none; }
+  .item.found .badge { display: block; }
+  .item.found .subtitle { color: #c04a6b; font-weight: bold; }
+  
+  #toast { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: white; padding: 15px 25px; border-radius: 15px; font-size: 15px; text-align: center; z-index: 100; opacity: 0; transition: opacity 0.3s; pointer-events: none; width: 80%; max-width: 300px; line-height: 1.5; }
+  #toast.show { opacity: 1; }
+  
+  #win { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(160deg,#ff5c8a,#c04a6b); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 200; color: white; text-align: center; padding: 20px; }
+  #win h1 { font-size: 26px; margin-bottom: 20px; }
+  #win p { font-size: 18px; margin: 8px 0; line-height: 1.6; }
+  #win .big { font-size: 60px; margin-bottom: 15px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🎁 杨总，生日快乐 🎁</h1>
+  <p>这个客厅藏了 3 份礼物，点开找找看吧！<br>(已找到：<span id="count">0</span> / 3)</p>
+</div>
+
+<div class="room">
+  <!-- 电视柜抽屉 -->
+  <div class="item" onclick="findGift(this, 1, '电视柜抽屉', '打开抽屉，里面有第一份礼物！🎁')">
+    <div class="icon">📺</div>
+    <div class="text">
+      <div class="title">白色电视墙下方</div>
+      <div class="subtitle">木质双开门柜子的抽屉</div>
+    </div>
+    <div class="badge">已找到</div>
+  </div>
+
+  <!-- 沙发抱枕 -->
+  <div class="item" onclick="findGift(this, 2, '沙发抱枕', '翻开抱枕，第二份礼物在这里！🎁')">
+    <div class="icon">🛋️</div>
+    <div class="text">
+      <div class="title">中间的沙发</div>
+      <div class="subtitle">两排沙发上的粉色抱枕</div>
+    </div>
+    <div class="badge">已找到</div>
+  </div>
+
+  <!-- 书柜底层 -->
+  <div class="item" onclick="findGift(this, 3, '书柜最下层', '在最底下的格子，第三份礼物现身！🎁')">
+    <div class="icon">📚</div>
+    <div class="text">
+      <div class="title">右侧书柜</div>
+      <div class="subtitle">最下边的一个格子</div>
+    </div>
+    <div class="badge">已找到</div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<div id="win">
+  <div class="big">🎂</div>
+  <h1>杨总，全部找到了！</h1>
+  <p>电视柜抽屉、沙发抱枕、书柜底层</p>
+  <p>每一份都藏着我爱你的心意</p>
+  <p style="margin-top: 20px; font-weight: bold; font-size: 20px;">生日快乐，我的杨总 ❤️</p>
+</div>
+
+<script>
+  let foundCount = 0;
+  let toastTimer;
+
+  function showToast(text) {
+    const toast = document.getElementById('toast');
+    toast.innerText = text;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      toast.classList.remove('show');
+    }, 2000);
+  }
+
+  function findGift(element, id, name, message) {
+    if (element.classList.contains('found')) return;
+
+    element.classList.add('found');
+    element.querySelector('.subtitle').innerText = message;
+    
+    foundCount++;
+    document.getElementById('count').innerText = foundCount;
+
+    // 震动反馈 (安卓支持)
+    if (navigator.vibrate) navigator.vibrate(100);
+
+    showToast('🎉 找到啦：' + name + '！');
+
+    if (foundCount === 3) {
+      setTimeout(() => {
+        document.getElementById('win').style.display = 'flex';
+      }, 1200);
+    }
+  }
+</script>
+</body>
+</html>
