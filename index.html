@@ -1,0 +1,346 @@
+
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>杨总的生日寻宝</title>
+<style>
+  html,body{margin:0;padding:0;overflow:hidden;background:#1a1a2e;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;}
+  #tip{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:rgba(255,182,193,.95);color:#5a2a3a;padding:12px 20px;border-radius:24px;font-size:15px;max-width:82%;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.3);z-index:100;opacity:0;transition:opacity .35s;pointer-events:none;line-height:1.5;}
+  #tip.show{opacity:1;}
+  #start{position:fixed;inset:0;background:linear-gradient(160deg,#ffe0ec,#e0ecff);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:200;text-align:center;padding:24px;}
+  #start h1{color:#c04a6b;font-size:24px;margin-bottom:8px;}
+  #start p{color:#6a4a5a;font-size:15px;line-height:1.7;margin:6px 0;}
+  #start button{margin-top:26px;background:linear-gradient(135deg,#ff8fb1,#ff5c8a);color:#fff;border:none;padding:15px 44px;border-radius:30px;font-size:17px;box-shadow:0 6px 20px rgba(255,92,138,.45);}
+  #counter{position:fixed;top:20px;right:16px;background:rgba(255,255,255,.9);color:#c04a6b;padding:8px 14px;border-radius:20px;font-size:14px;z-index:100;font-weight:bold;}
+  #win{position:fixed;inset:0;background:linear-gradient(160deg,#ff5c8a,#c04a6b);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:300;text-align:center;padding:28px;}
+  #win h1{color:#fff;font-size:26px;margin-bottom:16px;text-shadow:0 2px 10px rgba(0,0,0,.2);}
+  #win p{color:#fff;font-size:17px;line-height:2;margin:4px 0;}
+  #win .big{font-size:44px;margin:10px 0;}
+</style>
+</head>
+<body>
+
+<div id="start">
+  <div style="font-size:52px;margin-bottom:14px;">🎁</div>
+  <h1>杨总，生日快乐</h1>
+  <p>这个客厅里藏了 3 份礼物</p>
+  <p>手指拖动转视角，点击家具找找看</p>
+  <button onclick="document.getElementById('start').style.display='none'">开始寻宝</button>
+</div>
+
+<div id="counter">已找到 0 / 3</div>
+<div id="tip"></div>
+
+<div id="win">
+  <div class="big">🎂</div>
+  <h1>杨总，三份礼物都找到啦！</h1>
+  <p>电视柜抽屉、沙发抱枕、书柜底层</p>
+  <p>每一份都藏着我爱你的方式</p>
+  <p style="margin-top:18px;font-size:19px;">生日快乐，我的杨总 ❤️</p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+let scene, camera, renderer, controls, raycaster, pointer;
+let found = 0, winShown = false;
+const clickable = [];
+
+function init() {
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x2a2a3e);
+
+  camera = new THREE.PerspectiveCamera(55, innerWidth/innerHeight, 0.1, 1000);
+  camera.position.set(0, 4.5, 9);
+  camera.lookAt(0, 1.5, -2);
+
+  renderer = new THREE.WebGLRenderer({antialias:true});
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  document.body.appendChild(renderer.domElement);
+
+  raycaster = new THREE.Raycaster();
+  pointer = new THREE.Vector2();
+
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.target.set(0, 1.5, -2);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.minDistance = 5;
+  controls.maxDistance = 14;
+  controls.maxPolarAngle = Math.PI / 2.1;
+  controls.minPolarAngle = Math.PI / 4;
+  controls.enablePan = false;
+
+  buildRoom();
+  buildSofa();
+  buildBookcase();
+  buildTVWall();
+  addLights();
+
+  addEventListener('reslaneGeometry(16ize', onResize);
+  renderer.domElement.addEventListener('pointerdown', onPointerDown);
+  animate();
+}
+
+function addLights() {
+  scene.add(new THREE.AmbientLight(0xffffff, 0.75));
+  const d = new THREE.DirectionalLight(0xfff0e0, 0.9);
+  d.position.set(5, 10, 5);
+  d.castShadow = true;
+  d.shadow.mapSize.set(1024,1024);
+  scene.add(d);
+  const p = new THREE.PointLight(0xffd0e0, 0.5, 30);
+  p.position.set(0, 5, 3);
+  scene.add(p);
+}
+
+function buildRoom() {
+  const floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(16, 16),
+    new THREE.MeshStandardMaterial({color:0xd8c4a8, roughness:0.8})
+  );
+  floor.rotation.x = -Math.PI/2;
+  floor.receiveShadow = true;
+  scene.add(floor);
+
+  const wallMat = new THREE.MeshStandardMaterial({color:0xf5f0e8, roughness:0.9});
+  const back = new THREE.Mesh(new THREE.PlaneGeometry(16,7), wallMat);
+  back.position.set(0, 3.5, -8);
+  back.receiveShadow = true;
+  scene.add(back);
+
+  const left = new THREE.Mesh(new THREE.P,7), wallMat);
+  left.rotation.y = Math.PI/2;
+  left.position.set(-8, 3.5, 0);
+  scene.add(left);
+
+  const right = new THREE.Mesh(new THREE.PlaneGeometry(16,7), wallMat);
+  right.rotation.y = -Math.PI/2;
+  right.position.set(8, 3.5, 0);
+  scene.add(right);
+}
+
+// 电视墙 + 双开门柜 + 下方抽屉
+function buildTVWall() {
+  // 白色电视墙背板
+  const tvWall = new THREE.Mesh(
+    new THREE.BoxGeometry(6, 5, 0.3),
+    new THREE.MeshStandardMaterial({color:0xffffff, roughness:0.7})
+  );
+  tvWall.position.set(-3.5, 2.5, -7.7);
+  tvWall.castShadow = true;
+  scene.add(tvWall);
+
+  // 电视
+  const tv = new THREE.Mesh(
+    new THREE.BoxGeometry(3, 1.8, 0.15),
+    new THREE.MeshStandardMaterial({color:0x111111, roughness:0.3})
+  );
+  tv.position.set(-3.5, 3.2, -7.5);
+  scene.add(tv);
+  const screen = new THREE.Mesh(
+    new THREE.PlaneGeometry(2.8, 1.6),
+    new THREE.MeshStandardMaterial({color:0x223344, emissive:0x112233})
+  );
+  screen.position.set(-3.5, 3.2, -7.41);
+  scene.add(screen);
+
+  // 木质电视柜主体
+  const woodMat = new THREE.MeshStandardMaterial({color:0x8a5a3a, roughness:0.6});
+  const cab = new THREE.Mesh(new THREE.BoxGeometry(5, 2.2, 1.2), woodMat);
+  cab.position.set(-3.5, 1.1, -7.0);
+  cab.castShadow = true;
+  cab.receiveShadow = true;
+  scene.add(cab);
+
+  // 双开门（左右两扇）
+  const doorMat = new THREE.MeshStandardMaterial({color:0x9a6a4a, roughness:0.5});
+  const doorL = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.9, 0.1), doorMat);
+  doorL.position.set(-4.6, 1.1, -6.38);
+  doorL.castShadow = true;
+  scene.add(doorL);
+  const doorR = doorL.clone();
+  doorR.position.x = -2.4;
+  scene.add(doorR);
+
+  // 把手
+  const knobMat = new THREE.MeshStandardMaterial({color:0xffd700, metalness:0.8, roughness:0.3});
+  const kL = new THREE.Mesh(new THREE.SphereGeometry(0.07), knobMat);
+  kL.position.set(-3.6, 1.1, -6.28);
+  scene.add(kL);
+  const kR = kL.clone();
+  kR.position.x = -3.4;
+  scene.add(kR);
+
+  // 下方抽屉（礼物1藏这里）
+  const drawer = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.7, 0.15),
+    new THREE.MeshStandardMaterial({color:0x7a4a2a, roughness:0.5}));
+  drawer.position.set(-3.5, 0.35, -6.35);
+  drawer.castShadow = true;
+  scene.add(drawer);
+  const dKnob = new THREE.Mesh(new THREE.SphereGeometry(0.06), knobMat);
+  dKnob.position.set(-3.5, 0.35, -6.25);
+  scene.add(dKnob);
+
+  // 点击区域
+  doorL.userData = {type:'cabinetDoor', name:'电视柜门'};
+  doorR.userData = {type:'cabinetDoor', name:'电视柜门'};
+  drawer.userData = {type:'gift', id:1, name:'电视柜抽屉'};
+  clickable.push(doorL, doorR, drawer);
+}
+
+// 两排沙发 + 抱枕
+function buildSofa() {
+  const sofaMat = new THREE.MeshStandardMaterial({color:0x6a8caf, roughness:0.8});
+  const baseMat = new THREE.MeshStandardMaterial({color:0x556b8a, roughness:0.8});
+
+  // 前排沙发
+  const s1Base = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.7, 1.8), baseMat);
+  s1Base.position.set(0, 0.35, 1.5);
+  s1Base.castShadow = true;
+  scene.add(s1Base);
+  const s1Back = new THREE.Mesh(new THREE.BoxGeometry(4.5, 1.2, 0.5), sofaMat);
+  s1Back.position.set(0, 1.0, 2.35);
+  s1Back.castShadow = true;
+  scene.add(s1Back);
+
+  // 后排沙发
+  const s2Base = s1Base.clone();
+  s2Base.position.set(0, 0.35, 4.8);
+  scene.add(s2Base);
+  const s2Back = s1Back.clone();
+  s2Back.position.set(0, 1.0, 5.65);
+  scene.add(s2Back);
+
+  // 前排沙发上的抱枕（礼物2藏这里）
+  const pillowMat = new THREE.MeshStandardMaterial({color:0xffb6c1, roughness:0.9});
+  const pillow = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.35, 0.9), pillowMat);
+  pillow.position.set(0.8, 0.9, 1.5);
+  pillow.rotation.y = 0.2;
+  pillow.castShadow = true;
+  scene.add(pillow);
+  pillow.userData = {type:'gift', id:2, name:'沙发抱枕'};
+  clickable.push(pillow);
+
+  // 后排沙发也放个普通抱枕（干扰，点击给提示）
+  const pillow2 = pillow.clone();
+  pillow2.position.set(-0.8, 0.9, 4.8);
+  pillow2.userData = {type:'empty', name:'后排抱枕'};
+  clickable.push(pillow2);
+}
+
+// 书柜（最下格藏礼物3）
+function buildBookcase() {
+  const woodMat = new THREE.MeshStandardMaterial({color:0x5a3a2a, roughness:0.6});
+
+  // 柜体
+  const body = new THREE.Mesh(new THREE.BoxGeometry(3, 4.5, 1.2), woodMat);
+  body.position.set(5, 2.25, -6.8);
+  body.castShadow = true;
+  scene.add(body);
+
+  // 隔板
+  const shelfMat = new THREE.MeshStandardMaterial({color:0x6a4a3a, roughness:0.6});
+  for (let i=1; i<4; i++) {
+    const shelf = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.08, 1.0), shelfMat);
+    shelf.position.set(5, i*1.1, -6.8);
+    scene.add(shelf);
+  }
+
+  // 最下层格子前板（可点击，藏礼物）
+  const bottomPanel = new THREE.Mesh(new THREE.BoxGeometry(2.8, 1.0, 0.1),
+    new THREE.MeshStandardMaterial({color:0x6a4a3a, roughness:0.5}));
+  bottomPanel.position.set(5, 0.55, -6.15);
+  bottomPanel.castShadow = true;
+  scene.add(bottomPanel);
+  bottomPanel.userData = {type:'gift', id:3, name:'书柜底层'};
+  clickable.push(bottomPanel);
+
+  // 加几个"书"装饰
+  const colors = [0xc04a6b, 0x4a6ac0, 0xc0a04a, 0x4ac08c];
+  for (let i=0; i<6; i++) {
+    const book = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.7, 0.6),
+      new THREE.MeshStandardMaterial({color:colors[i%4]}));
+    book.position.set(4.1 + i*0.28, 2.75, -6.8);
+    scene.add(book);
+  }
+  // 上层再放几本
+  for (let i=0; i<5; i++) {
+    const book = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.7, 0.6),
+      new THREE.MeshStandardMaterial({color:colors[(i+2)%4]}));
+    book.position.set(4.3 + i*0.3, 3.85, -6.8);
+    scene.add(book);
+  }
+}
+
+function showTip(text, color) {
+  const tip = document.getElementById('tip');
+  tip.textContent = text;
+  tip.style.background = color || 'rgba(255,182,193,.95)';
+  tip.classList.add('show');
+  clearTimeout(tip._t);
+  tip._t = setTimeout(() => tip.classList.remove('show'), 2600);
+}
+
+const emptyMessages = [
+  '这里是空的～再找找别处吧',
+  '这里没有哦，去翻翻别的家具',
+  '咦，被发现了但没东西，继续找！',
+  '不是这里呢，宝贝礼物还躲着'
+];
+
+function handleClick(obj) {
+  const d = obj.userData;
+  if (d.type === 'cabinetDoor') {
+    showTip('柜门打开了，里面空空的…看看下面的抽屉？');
+    return;
+  }
+  if (d.type === 'empty') {
+    showTip(emptyMessages[Math.floor(Math.random()*emptyMessages.length)]);
+    return;
+  }
+  if (d.type === 'gift') {
+    if (d.found) return;
+    d.found = true;
+    found++;
+    document.getElementById('counter').textContent = `已找到 ${found} / 3`;
+    if (d.id === 1) showTip('🎁 第一份礼物找到了！藏在电视柜抽屉里！', 'rgba(255,215,0,.95)');
+    if (d.id === 2) showTip('🎁 第二份礼物找到了！在沙发抱枕下面！', 'rgba(255,215,0,.95)');
+    if (d.id === 3) showTip('🎁 第三份礼物找到了！在书柜最底层！', 'rgba(255,215,0,.95)');
+    obj.scale.y *= 1.15;
+    setTimeout(() => { obj.scale.y /= 1.15; }, 300);
+    if (found >= 3 && !winShown) {
+      winShown = true;
+      setTimeout(() => { document.getElementById('win').style.display = 'flex'; }, 1200);
+    }
+  }
+}
+
+function onPointerDown(e) {
+  pointer.x = (e.clientX / innerWidth) * 2 - 1;
+  pointer.y = -(e.clientY / innerHeight) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const hits = raycaster.intersectObjects(clickable, false);
+  if (hits.length > 0) handleClick(hits[0].object);
+}
+
+function onResize() {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+init();
+</script>
+</body>
+</html>
